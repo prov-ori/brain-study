@@ -290,6 +290,7 @@ function frameBox(box) {
 }
 function focusSelection() {
   if (!ready || !selected.size) return;
+  model.updateWorldMatrix(true, true);
   const box = new T.Box3();
   for (const m of meshes)
     if (selected.has(m.userData.node.id) && m.visible) box.expandByObject(m);
@@ -303,6 +304,7 @@ function resetCamera() {
   controls.update();
   if (model) {
     // Descending nerves extend far beyond the brain; frame the anatomical core.
+    model.updateWorldMatrix(true, true);
     const core = new T.Box3();
     for (const mesh of meshes)
       if (mesh.userData.node.core) core.expandByObject(mesh);
