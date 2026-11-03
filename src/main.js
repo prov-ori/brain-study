@@ -1,63 +1,471 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
-const DATA={
- frontal:['Лобная доля','Lobus frontalis','Участвует в планировании, произвольных движениях, принятии решений и контроле поведения.',0xf0a38c],
- parietal:['Теменная доля','Lobus parietalis','Обрабатывает ощущения тела и участвует в пространственном внимании.',0xe8c38d],
- temporal:['Височная доля','Lobus temporalis','Участвует в обработке звуков, речи, памяти и распознавании объектов.',0xbb9fe4],
- occipital:['Затылочная доля','Lobus occipitalis','Содержит основные корковые области обработки зрительной информации.',0x7fcac1],
- cerebellum:['Мозжечок','Cerebellum','Участвует в координации, равновесии и двигательном обучении.',0xd995ae],
- brainstem:['Ствол мозга','Truncus encephali','Содержит проводящие пути и структуры, участвующие в регуляции жизненно важных функций.',0x8aafdb],
- thalamus:['Таламус','Thalamus','Участвует в обработке и передаче сенсорных, моторных и других сигналов.',0xe8af7b],
- hippocampus:['Гиппокамп','Hippocampus','Важен для формирования эпизодической памяти и пространственной навигации.',0xa2b8ed],
- amygdala:['Миндалевидное тело','Corpus amygdaloideum','Участвует в эмоциональном обучении и оценке значимости стимулов.',0xec96aa],
- corpuscallosum:['Мозолистое тело','Corpus callosum','Связывает корковые области левого и правого полушарий.',0xa5dfd3]
+import * as T from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { DATA, LESSONS, QUESTIONS } from "./content.js";
+import {
+  CATEGORIES,
+  regionOf,
+  filterNodes,
+  readProgress,
+  advanceQuiz,
+  nextQuestion,
+} from "./atlas-data.js";
+import "../style.css";
+const $ = (s) => document.querySelector(s),
+  base = import.meta.env.BASE_URL;
+let nodes = [],
+  meshes = [],
+  selected = new Set(),
+  renderer,
+  scene,
+  camera,
+  controls,
+  model,
+  ready = false,
+  isolated = false;
+let progress;
+try {
+  progress = readProgress(localStorage);
+} catch {
+  progress = { lessons: [] };
+}
+const save = () => {
+  try {
+    localStorage.setItem("neuroatlas21", JSON.stringify(progress));
+  } catch {}
 };
-const LESSONS=[
- ['Доли коры больших полушарий','Поверхность мозга','Кору полушарий описывают через лобную, теменную, височную и затылочную доли. Многие функции обеспечивают распределённые сети, а не отдельная область.','frontal'],
- ['Движения и координация','Мозжечок и ствол','Мозжечок помогает уточнять движения и обучаться им. Через ствол мозга проходят многочисленные нервные пути.','cerebellum'],
- ['Ощущения и зрение','Обработка сигналов','Таламус участвует в передаче многих сигналов, теменная кора — в обработке ощущений тела, затылочная — зрения.','occipital'],
- ['Память и эмоции','Внутренние структуры','Гиппокамп участвует в формировании эпизодических воспоминаний, а миндалевидное тело — в эмоциональном обучении.','hippocampus'],
- ['Связи полушарий','Проводящие пути','Мозолистое тело — крупный пучок волокон, соединяющий корковые области двух полушарий.','corpuscallosum']
-];
-const QUESTIONS=[
- ['Какая доля особенно связана с обработкой зрения?',['Лобная','Затылочная','Височная','Теменная'],1,'Основные зрительные зоны коры находятся в затылочной доле.'],
- ['Что помогает согласовывать движения?',['Мозжечок','Мозолистое тело','Гиппокамп','Миндалина'],0,'Мозжечок участвует в координации движений.'],
- ['Что связывает оба полушария?',['Таламус','Мозолистое тело','Мозжечок','Ствол мозга'],1,'Мозолистое тело содержит межполушарные волокна.'],
- ['Что важно для формирования эпизодической памяти?',['Гиппокамп','Затылочная доля','Мост','Мозжечок'],0,'Гиппокамп участвует в формировании новых воспоминаний.'],
- ['Какая доля участвует в планировании действий?',['Затылочная','Лобная','Теменная','Височная'],1,'Важные системы планирования включают лобную кору.'],
- ['Где находятся важные слуховые корковые зоны?',['Височная','Затылочная','Лобная','Теменная'],0,'Слуховая кора находится в височной доле.'],
- ['Какова одна из функций таламуса?',['Только дыхание','Передача и обработка сигналов','Хранение всей памяти','Только зрение'],1,'Таламус включает ядра нескольких функциональных систем.'],
- ['Какая структура участвует в эмоциональном обучении?',['Миндалина','Затылочная доля','Мозолистое тело','Мозжечок'],0,'Миндалевидное тело участвует в эмоциональном обучении.']
-];
-const $=q=>document.querySelector(q), keys=Object.keys(DATA);
-let progress={};try{progress=JSON.parse(localStorage.getItem('neuroatlas21')||'{}')}catch{};
-if(!Array.isArray(progress.lessons))progress.lessons=[];
-const save=()=>{try{localStorage.setItem('neuroatlas21',JSON.stringify(progress))}catch{}};
-function updateProgress(){$('#progress-bar').style.width=`${100*progress.lessons.length/LESSONS.length}%`;$('#progress-caption').textContent=`${progress.lessons.length} из ${LESSONS.length} уроков`;}
-function view(name){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+name));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===name));if(name==='atlas')setTimeout(resize,0)}
-document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>view(b.dataset.view));
-for(const id of keys){const b=document.createElement('button');b.textContent=DATA[id][0];b.dataset.region=id;b.onclick=()=>select(id);$('#region-list').append(b)}
-function renderLessons(){const box=$('#lesson-list');box.replaceChildren();LESSONS.forEach((l,i)=>{const b=document.createElement('button');b.className='lesson-card';const n=document.createElement('span');n.className='num';n.textContent=`${i+1} / ${LESSONS.length}`;const h=document.createElement('h3');h.textContent=l[0];const p=document.createElement('p');p.textContent=l[1];const s=document.createElement('span');s.className='done';s.textContent=progress.lessons.includes(i)?'✓ Пройдено':'Открыть урок →';b.append(n,h,p,s);b.onclick=()=>openLesson(i);box.append(b)})}
-function openLesson(i){const l=LESSONS[i],d=$('#lesson-detail');d.hidden=false;d.replaceChildren();const h=document.createElement('h2');h.textContent=l[0];const p=document.createElement('p');p.textContent=l[2];const done=document.createElement('button');done.className='primary';done.textContent=progress.lessons.includes(i)?'Урок пройден ✓':'Отметить как изученный';done.onclick=()=>{if(!progress.lessons.includes(i))progress.lessons.push(i);save();updateProgress();renderLessons();done.textContent='Урок пройден ✓'};const see=document.createElement('button');see.className='primary';see.style.marginLeft='10px';see.textContent='Найти на модели →';see.onclick=()=>{view('atlas');select(l[3])};d.append(h,p,done,see);d.scrollIntoView({block:'nearest',behavior:'smooth'})}
-updateProgress();renderLessons();
-let qi=0,score=0,answered=false;
-function renderQuiz(){answered=false;const q=QUESTIONS[qi];$('#quiz-counter').textContent=`Вопрос ${qi+1} из ${QUESTIONS.length}`;$('#quiz-score').textContent=`Верно: ${score}`;$('#quiz-bar').style.width=`${100*qi/QUESTIONS.length}%`;$('#quiz-question').textContent=q[0];$('#quiz-feedback').textContent='';$('#quiz-next').disabled=true;$('#quiz-next').textContent=qi===QUESTIONS.length-1?'Завершить →':'Следующий вопрос →';const options=$('#quiz-options');options.replaceChildren();q[1].forEach((text,j)=>{const b=document.createElement('button');b.textContent=text;b.onclick=()=>{if(answered)return;answered=true;if(j===q[2])score++;options.querySelectorAll('button').forEach((x,k)=>{x.disabled=true;if(k===q[2])x.classList.add('correct');else if(k===j)x.classList.add('incorrect')});$('#quiz-score').textContent=`Верно: ${score}`;$('#quiz-feedback').textContent=`${j===q[2]?'Верно. ':'Неверно. '}${q[3]}`;$('#quiz-next').disabled=false};options.append(b)})}
-$('#quiz-next').onclick=()=>{if(!answered)return;qi++;if(qi===QUESTIONS.length){progress.lastScore=score;save();$('#quiz-question').textContent=`Результат: ${score} из ${QUESTIONS.length}`;$('#quiz-counter').textContent='Тест завершён';$('#quiz-bar').style.width='100%';$('#quiz-options').replaceChildren();$('#quiz-feedback').textContent='Нажмите ниже, чтобы пройти тест ещё раз.';$('#quiz-next').textContent='Повторить тест ↺';$('#quiz-next').onclick=()=>{qi=0;score=0;$('#quiz-next').onclick=quizAdvance;renderQuiz()}}else renderQuiz()};
-function quizAdvance(){if(!answered)return;qi++;renderQuiz()}
-renderQuiz();
-let renderer,scene,camera,controls,model,meshes=[],auto=false;const original=new Map();
-const canvasBox=$('#brain-canvas');
-function status(s){$('#model-status').textContent=s}
-function geometry(rx,ry,rz,seed){const g=new THREE.SphereGeometry(1,100,72),p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);const folds=.045*Math.sin(29*x+8*Math.sin(9*z+seed))*Math.sin(29*z+7*Math.sin(y*8+seed))+.019*Math.cos(47*y+5*Math.sin(x*10));const f=1+folds;p.setXYZ(i,x*rx*f,y*ry*f,z*rz*f)}g.computeVertexNormals();return g}
-function add(parent,id,g,pos){const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:DATA[id][3],roughness:.85}));m.position.set(...pos);m.userData.regionId=id;parent.add(m);meshes.push(m)}
-function fallback(){model=new THREE.Group();for(const side of [-1,1]){const z=side*.68;add(model,'frontal',geometry(.77,.69,.62,side),[.87,.22,z]);add(model,'parietal',geometry(.8,.68,.63,side+2),[-.1,.56,z]);add(model,'temporal',geometry(.76,.40,.53,side+4),[-.08,-.38,z]);add(model,'occipital',geometry(.53,.64,.57,side+6),[-1.10,.23,z]);add(model,'cerebellum',geometry(.60,.43,.50,side+8),[-1.10,-.86,side*.39]);add(model,'thalamus',new THREE.SphereGeometry(.26,24,18),[-.13,-.13,side*.28]);add(model,'hippocampus',new THREE.CapsuleGeometry(.13,.34,6,14),[-.30,-.47,side*.49]);add(model,'amygdala',new THREE.SphereGeometry(.16,20,16),[.1,-.46,side*.45])}add(model,'brainstem',new THREE.CapsuleGeometry(.28,1,8,20),[-.58,-1.05,0]);add(model,'corpuscallosum',new THREE.TorusGeometry(.45,.12,12,36,Math.PI),[-.18,.1,0]);scene.add(model);$('#model-mode').textContent='УЧЕБНАЯ 3D-СХЕМА';status('Схема готова · нажмите на область');select('frontal')}
-async function loadModel(){const url=`${import.meta.env.BASE_URL}models/brain.glb`;try{const r=await fetch(url,{method:'HEAD'});if(!r.ok||r.headers.get('content-type')?.includes('text/html')){fallback();return}}catch{fallback();return}try{status('Загрузка GLB…');const gltf=await new GLTFLoader().loadAsync(url);const loaded=[];gltf.scene.traverse(o=>{if(!o.isMesh)return;const n=o.name.toLowerCase().replace(/[\s-]+/g,'_');const id=keys.find(k=>n===k||n===k+'_l'||n===k+'_r'||n===k+'_left'||n===k+'_right'||n===k+'_lobe'||(k==='corpuscallosum'&&n==='corpus_callosum')||(k==='brainstem'&&n==='brain_stem'));if(id){o.userData.regionId=id;loaded.push(o)}});if(!loaded.length)throw Error('У GLB нет подходящих имён структур');model=gltf.scene;model.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(model),s=box.getSize(new THREE.Vector3());model.scale.multiplyScalar(3.5/Math.max(s.x,s.y,s.z));model.updateMatrixWorld(true);model.position.sub(new THREE.Box3().setFromObject(model).getCenter(new THREE.Vector3()));scene.add(model);meshes=loaded;$('#model-mode').textContent='ВНЕШНЯЯ GLB-МОДЕЛЬ';status('GLB загружен · проверьте анатомическую разметку')}catch(e){console.warn(e);fallback()}}
-function select(id){const d=DATA[id];$('#structure-title').textContent=d[0];$('#structure-latin').textContent=d[1];$('#structure-description').textContent=d[2];document.querySelectorAll('[data-region]').forEach(b=>b.classList.toggle('active',b.dataset.region===id));for(const m of meshes){if(!original.has(m))original.set(m,m.material);if(m.material!==original.get(m)){m.material.dispose?.()}m.material=original.get(m);if(m.userData.regionId===id){const c=m.material.clone();c.emissive.setHex(0x235767);c.emissiveIntensity=.7;m.material=c}}}
-$('#clear-selection').onclick=()=>{for(const m of meshes){const base=original.get(m);if(base){if(m.material!==base)m.material.dispose?.();m.material=base}}document.querySelectorAll('[data-region]').forEach(b=>b.classList.remove('active'));$('#structure-title').textContent='Выберите область';$('#structure-latin').textContent='Anatomia encephali';$('#structure-description').textContent='Нажмите на модель или выберите область из списка.'};
-$('#reset-camera').onclick=()=>{if(!camera)return;camera.position.set(4,2.7,5.7);controls.target.set(0,0,0);controls.update()};
-$('#auto-rotate').onclick=e=>{auto=!auto;e.currentTarget.setAttribute('aria-pressed',String(auto));e.currentTarget.textContent=auto?'◼ Остановить вращение':'⟳ Автовращение'};
-function resize(){if(!renderer)return;const w=canvasBox.clientWidth,h=canvasBox.clientHeight;if(w&&h){camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}}
-function start(){try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.4;canvasBox.append(renderer.domElement)}catch(e){console.error(e);status('WebGL недоступен. Включите аппаратное ускорение в браузере.');return}scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(43,1,.02,100);camera.position.set(4,2.7,5.7);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=2.3;controls.maxDistance=12;scene.add(new THREE.HemisphereLight(0xc5e8ff,0x293344,2.2));const key=new THREE.DirectionalLight(0xffe3d0,3.3);key.position.set(5,7,6);scene.add(key);const fill=new THREE.DirectionalLight(0x76baf8,2);fill.position.set(-4,2,-5);scene.add(fill);const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down=null;renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>6)return;const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);for(const hit of ray.intersectObjects(meshes,true)){let o=hit.object;while(o&&!o.userData.regionId)o=o.parent;if(o?.userData.regionId){select(o.userData.regionId);break}}});new ResizeObserver(resize).observe(canvasBox);window.addEventListener('resize',resize);resize();loadModel();function frame(){requestAnimationFrame(frame);if(!document.hidden){controls.autoRotate=auto;controls.autoRotateSpeed=.55;controls.update();renderer.render(scene,camera)}}frame()}
+const status = (s) => ($("#model-status").textContent = s);
+function view(name) {
+  document
+    .querySelectorAll(".view")
+    .forEach((e) => e.classList.toggle("active", e.id === "view-" + name));
+  document.querySelectorAll("[data-view]").forEach((e) => {
+    e.classList.toggle("active", e.dataset.view === name);
+    e.setAttribute("aria-current", e.dataset.view === name ? "page" : "false");
+  });
+  if (name === "atlas") requestAnimationFrame(resize);
+}
+document
+  .querySelectorAll("[data-view]")
+  .forEach((b) => (b.onclick = () => view(b.dataset.view)));
+function updateProgress() {
+  $("#progress-bar").style.width = `${(progress.lessons.length / 5) * 100}%`;
+  $("#progress-caption").textContent = `${progress.lessons.length} из 5 уроков`;
+}
+function renderLessons() {
+  $("#lesson-list").replaceChildren();
+  LESSONS.forEach((l, i) => {
+    const b = document.createElement("button");
+    b.className = "lesson-card";
+    b.innerHTML = `<span class="num">0${i + 1}</span><h3>${l[0]}</h3><p>${l[1]}</p><span class="done">${progress.lessons.includes(i) ? "✓ Пройдено" : "Открыть урок →"}</span>`;
+    b.onclick = () => {
+      const d = $("#lesson-detail");
+      d.hidden = false;
+      d.innerHTML = `<h2>${l[0]}</h2><p>${l[2]}</p><button class="primary" id="lesson-done">Отметить как изученный</button> <button class="primary" id="lesson-see">Найти на модели →</button>`;
+      $("#lesson-done").onclick = () => {
+        if (!progress.lessons.includes(i)) progress.lessons.push(i);
+        save();
+        updateProgress();
+        renderLessons();
+        $("#lesson-done").textContent = "Урок пройден ✓";
+      };
+      $("#lesson-see").onclick = () => {
+        view("atlas");
+        chooseRegion(l[3]);
+      };
+      d.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    };
+    $("#lesson-list").append(b);
+  });
+}
+let quiz;
+function renderQuiz() {
+  const q = QUESTIONS[quiz.index];
+  $("#quiz-counter").textContent = quiz.finished
+    ? "Тест завершён"
+    : `Вопрос ${quiz.index + 1} из ${QUESTIONS.length}`;
+  $("#quiz-score").textContent = `Верно: ${quiz.score}`;
+  $("#quiz-bar").style.width =
+    `${(quiz.finished ? 1 : quiz.index / QUESTIONS.length) * 100}%`;
+  $("#quiz-question").textContent = quiz.finished
+    ? `Результат: ${quiz.score} из ${QUESTIONS.length}`
+    : q[0];
+  $("#quiz-feedback").textContent = "";
+  $("#quiz-options").replaceChildren();
+  $("#quiz-next").disabled = !quiz.finished;
+  $("#quiz-next").textContent = quiz.finished
+    ? "Повторить тест ↺"
+    : quiz.index === QUESTIONS.length - 1
+      ? "Завершить →"
+      : "Следующий вопрос →";
+  if (quiz.finished) return;
+  q[1].forEach((text, i) => {
+    const b = document.createElement("button");
+    b.textContent = text;
+    b.onclick = () => {
+      if (quiz.answered) return;
+      quiz = advanceQuiz(quiz, i, QUESTIONS);
+      $("#quiz-options")
+        .querySelectorAll("button")
+        .forEach((o, j) => {
+          o.disabled = true;
+          o.classList.toggle("correct", j === q[2]);
+          o.classList.toggle("incorrect", j === i && i !== q[2]);
+        });
+      $("#quiz-feedback").textContent =
+        (i === q[2] ? "Верно. " : "Неверно. ") + q[3];
+      $("#quiz-score").textContent = `Верно: ${quiz.score}`;
+      $("#quiz-next").disabled = false;
+    };
+    $("#quiz-options").append(b);
+  });
+}
+function resetQuiz() {
+  quiz = { index: 0, score: 0, answered: false, finished: false };
+  renderQuiz();
+}
+$("#quiz-next").onclick = () => {
+  if (quiz.finished) resetQuiz();
+  else {
+    quiz = nextQuestion(quiz, QUESTIONS.length);
+    renderQuiz();
+  }
+};
+updateProgress();
+renderLessons();
+resetQuiz();
+const sideLabel = {
+  left: "слева",
+  right: "справа",
+  median: "по средней линии",
+};
+function state() {
+  return {
+    query: $("#search").value,
+    category: $("#category").value,
+    side: $("#hemisphere").value,
+  };
+}
+function renderList() {
+  const list = filterNodes(nodes, state());
+  $("#result-count").textContent = `${list.length} из ${nodes.length}`;
+  $("#structure-list").replaceChildren();
+  for (const n of list) {
+    const b = document.createElement("button");
+    b.textContent = `${n.label} · ${sideLabel[n.side] || n.side}`;
+    b.dataset.id = n.id;
+    b.classList.toggle("active", selected.has(n.id));
+    b.onclick = () => choose([n.id], n);
+    $("#structure-list").append(b);
+  }
+  if (!list.length) {
+    $("#structure-list").textContent =
+      "Совпадений нет. Попробуйте английское название или выберите другой раздел.";
+  }
+  applyVisibility();
+}
+function applyVisibility() {
+  if (!ready) return;
+  const allowed = new Set(
+    filterNodes(nodes, { ...state(), query: "" }).map((n) => n.id),
+  );
+  const opacity = Number($("#cortex-opacity").value) / 100;
+  const colorful = $("#color-mode").checked;
+  for (const m of meshes) {
+    const n = m.userData.node;
+    const sel = selected.has(n.id);
+    m.visible = allowed.has(n.id) && (!isolated || sel);
+    const mat = m.material;
+    mat.color.set(
+      colorful
+        ? DATA[regionOf(n)]?.[3] || CATEGORIES[n.category]?.[1] || "#cfb6ac"
+        : n.category === "cortex"
+          ? "#cfa6a0"
+          : n.category === "cerebellum"
+            ? "#bb8d88"
+            : CATEGORIES[n.category]?.[1] || "#cfb6ac",
+    );
+    mat.emissive.set(sel ? "#4ccbb9" : "#000000");
+    mat.emissiveIntensity = sel ? 0.3 : 0;
+    mat.opacity =
+      n.category === "cortex" && !sel
+        ? opacity
+        : n.category === "meninges_dura"
+          ? 0.18
+          : 1;
+    mat.transparent = mat.opacity < 1;
+    mat.depthWrite = mat.opacity > 0.95;
+    m.visible &&= mat.opacity > 0;
+  }
+}
+function choose(ids, n) {
+  selected = new Set(ids);
+  isolated = false;
+  $("#isolate").setAttribute("aria-pressed", "false");
+  document
+    .querySelectorAll("[data-region]")
+    .forEach((b) => b.classList.remove("active"));
+  if (n) {
+    $("#structure-title").textContent = n.label;
+    $("#structure-latin").textContent = sideLabel[n.side];
+    const r = regionOf(n);
+    $("#structure-description").textContent =
+      (r ? DATA[r][2] + " " : "") +
+      `Раздел: ${CATEGORIES[n.category]?.[0]}. Источник: ${n.source}. ` +
+      (n.source !== "Z-Anatomy / BodyParts3D"
+        ? "Приблизительная регистрация из другого атласа; границы не являются индивидуальными."
+        : "Геометрия из открытого анатомического атласа.");
+  }
+  $("#selection-count").textContent = `Выбрано структур: ${ids.length}`;
+  renderList();
+}
+function chooseRegion(id) {
+  const matched = nodes.filter((n) => regionOf(n) === id);
+  $("#category").value = "";
+  $("#hemisphere").value = "both";
+  $("#search").value = "";
+  choose(matched.map((n) => n.id));
+  $("#structure-title").textContent = DATA[id][0];
+  $("#structure-latin").textContent = DATA[id][1];
+  $("#structure-description").textContent = DATA[id][2];
+  $(`[data-region="${id}"]`).classList.add("active");
+  if (["thalamus", "hippocampus", "amygdala", "corpuscallosum"].includes(id)) {
+    $("#cortex-opacity").value = 12;
+    $("#opacity-value").textContent = "12%";
+    applyVisibility();
+  }
+  if (ready) focusSelection();
+}
+for (const [id, d] of Object.entries(DATA)) {
+  const b = document.createElement("button");
+  b.textContent = d[0];
+  b.dataset.region = id;
+  b.onclick = () => chooseRegion(id);
+  $("#region-list").append(b);
+}
+for (const [id, [label]] of Object.entries(CATEGORIES)) {
+  const o = document.createElement("option");
+  o.value = id;
+  o.textContent = label;
+  $("#category").append(o);
+}
+$("#search").oninput = renderList;
+$("#category").onchange = renderList;
+$("#hemisphere").onchange = renderList;
+$("#cortex-opacity").oninput = () => {
+  $("#opacity-value").textContent = $("#cortex-opacity").value + "%";
+  applyVisibility();
+};
+$("#color-mode").onchange = applyVisibility;
+$("#isolate").onclick = () => {
+  if (!selected.size) return;
+  isolated = !isolated;
+  $("#isolate").setAttribute("aria-pressed", String(isolated));
+  applyVisibility();
+  if (isolated) focusSelection();
+};
+function resize() {
+  if (!renderer) return;
+  const box = $("#brain-canvas");
+  const w = box.clientWidth,
+    h = box.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+function frameBox(box) {
+  if (box.isEmpty()) return;
+  const center = box.getCenter(new T.Vector3()),
+    r = box.getBoundingSphere(new T.Sphere()).radius;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const fit =
+    (Math.min(camera.fov, camera.fov * camera.aspect) * Math.PI) / 180;
+  camera.position
+    .copy(center)
+    .addScaledVector(dir, Math.max(0.4, (r / Math.sin(fit / 2)) * 1.15));
+  controls.target.copy(center);
+  controls.update();
+}
+function focusSelection() {
+  if (!ready || !selected.size) return;
+  const box = new T.Box3();
+  for (const m of meshes)
+    if (selected.has(m.userData.node.id) && m.visible) box.expandByObject(m);
+  frameBox(box);
+}
+$("#focus-selection").onclick = focusSelection;
+function resetCamera() {
+  if (!camera) return;
+  camera.position.set(4, 1.6, 6);
+  controls.target.set(0, 0, 0);
+  controls.update();
+  if (model) frameBox(new T.Box3().setFromObject(model));
+}
+function reset() {
+  selected.clear();
+  isolated = false;
+  $("#search").value = "";
+  $("#category").value = "";
+  $("#hemisphere").value = "both";
+  $("#cortex-opacity").value = 100;
+  $("#opacity-value").textContent = "100%";
+  $("#isolate").setAttribute("aria-pressed", "false");
+  $("#selection-count").textContent = "Выбрано структур: 0";
+  $("#structure-title").textContent = "Выберите структуру";
+  $("#structure-latin").textContent = "437 структур · открытая анатомия";
+  $("#structure-description").textContent =
+    "Выберите область или отдельную структуру. Для просмотра внутренних отделов уменьшите непрозрачность коры или используйте изоляцию.";
+  renderList();
+  resetCamera();
+}
+$("#reset-camera").onclick = reset;
+$("#clear-selection").onclick = () => {
+  selected.clear();
+  isolated = false;
+  $("#isolate").setAttribute("aria-pressed", "false");
+  $("#selection-count").textContent = "Выбрано структур: 0";
+  renderList();
+};
+$("#auto-rotate").onclick = () => {
+  if (!controls) return;
+  controls.autoRotate = !controls.autoRotate;
+  $("#auto-rotate").setAttribute("aria-pressed", String(controls.autoRotate));
+};
+$("#zoom-in").onclick = () => {
+  if (camera) {
+    camera.position.lerp(controls.target, 0.15);
+    controls.update();
+  }
+};
+$("#zoom-out").onclick = () => {
+  if (camera) {
+    camera.position
+      .sub(controls.target)
+      .multiplyScalar(1.18)
+      .add(controls.target);
+    controls.update();
+  }
+};
+function fail(e) {
+  console.error(e);
+  status(
+    "Не удалось открыть 3D-модель. Проверьте WebGL и перезагрузите страницу.",
+  );
+  $("#model-mode").textContent = "Ошибка загрузки";
+  $("#retry").hidden = false;
+}
+$("#retry").onclick = () => location.reload();
+async function start() {
+  try {
+    renderer = new T.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setClearColor(0, 0);
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    $("#brain-canvas").append(renderer.domElement);
+    renderer.domElement.setAttribute(
+      "aria-label",
+      "Трёхмерная анатомическая модель мозга",
+    );
+    renderer.domElement.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+      fail(new Error("WebGL context lost"));
+    });
+    scene = new T.Scene();
+    camera = new T.PerspectiveCamera(38, 1, 0.01, 100);
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.minDistance = 0.15;
+    controls.maxDistance = 35;
+    controls.autoRotateSpeed = 0.5;
+    scene.add(new T.HemisphereLight("#f6e7dc", "#293242", 2));
+    for (const [color, intensity, pos] of [
+      ["#fff2e5", 3, [4, 6, 7]],
+      ["#9bc5df", 1.6, [-5, 2, -4]],
+      ["#e2aaa5", 1, [2, -2, -6]],
+    ]) {
+      const l = new T.DirectionalLight(color, intensity);
+      l.position.set(...pos);
+      scene.add(l);
+    }
+    new ResizeObserver(resize).observe($("#brain-canvas"));
+    resize();
+    renderer.setAnimationLoop(() => {
+      if (!document.hidden && $("#view-atlas").classList.contains("active")) {
+        controls.update();
+        renderer.render(scene, camera);
+      }
+    });
+    status("Загрузка анатомии — 4,65 МБ…");
+    const response = await fetch(base + "models/manifest.json");
+    if (!response.ok) throw new Error("Manifest HTTP " + response.status);
+    nodes = (await response.json()).nodes;
+    const draco = new DRACOLoader().setDecoderPath(base + "draco/");
+    const loader = new GLTFLoader().setDRACOLoader(draco);
+    const gltf = await loader.loadAsync(base + "models/brain.glb");
+    draco.dispose();
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const found = new Set();
+    gltf.scene.traverse((o) => {
+      if (!o.isMesh) return;
+      const id = o.userData.bx_id ?? o.parent?.userData.bx_id,
+        n = byId.get(id);
+      if (!n) throw new Error("Unmapped mesh " + o.name);
+      found.add(id);
+      o.userData.node = n;
+      o.material = new T.MeshStandardMaterial({
+        roughness: 0.72,
+        metalness: 0,
+        side: T.DoubleSide,
+      });
+      meshes.push(o);
+    });
+    if (found.size !== nodes.length) throw new Error("Manifest/model mismatch");
+    const core = new T.Box3();
+    gltf.scene.updateMatrixWorld(true);
+    for (const m of meshes) if (m.userData.node.core) core.expandByObject(m);
+    const c = core.getCenter(new T.Vector3()),
+      r = core.getBoundingSphere(new T.Sphere()).radius;
+    gltf.scene.position.sub(c);
+    model = new T.Group();
+    model.add(gltf.scene);
+    model.scale.setScalar(1.7 / r);
+    model.rotation.y = Math.PI;
+    scene.add(model);
+    ready = true;
+    $("#model-mode").textContent = `${found.size} СТРУКТУР · GLB`;
+    let down;
+    renderer.domElement.addEventListener(
+      "pointerdown",
+      (e) => (down = [e.clientX, e.clientY]),
+    );
+    renderer.domElement.addEventListener("pointerup", (e) => {
+      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5)
+        return;
+      const rect = renderer.domElement.getBoundingClientRect(),
+        p = new T.Vector2(
+          ((e.clientX - rect.left) / rect.width) * 2 - 1,
+          (-(e.clientY - rect.top) / rect.height) * 2 + 1,
+        ),
+        ray = new T.Raycaster();
+      ray.setFromCamera(p, camera);
+      const hit = ray.intersectObjects(
+        meshes.filter((m) => m.visible && m.material.opacity > 0.15),
+        false,
+      )[0];
+      if (hit) choose([hit.object.userData.node.id], hit.object.userData.node);
+    });
+    reset();
+    status("Модель загружена · выберите структуру");
+    document.body.dataset.modelReady = "true";
+  } catch (e) {
+    fail(e);
+  }
+}
 start();

@@ -1,6 +1,5 @@
-import { defineConfig } from 'vite';
-
+import { defineConfig } from "vite";
 export default defineConfig({
-  // Correct asset paths on https://prov-ori.github.io/brain-study/
-  base: '/brain-study/',
+  base: process.env.VITE_BASE_PATH || "/brain-study/",
+  build: { rollupOptions: { output: { manualChunks: { three: ["three"] } } } },
 });

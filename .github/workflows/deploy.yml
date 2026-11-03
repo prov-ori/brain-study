@@ -1,14 +1,15 @@
-name: Deploy NEUROATLAS to GitHub Pages
+name: Validate and deploy NEUROATLAS
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: github-pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build-and-deploy:
@@ -20,15 +21,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Build
-        run: npm run build
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run check:model
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-test-evidence
+          path: test-results/
       - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           path: ./dist
       - name: Deploy
         id: deploy
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/deploy-pages@v4
