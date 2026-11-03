@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08111d" />
+    <meta
+      name="description"
+      content="NEUROATLAS — интерактивный 3D-атлас строения мозга и тренажёр знаний."
+    />
+    <title>NEUROATLAS · Интерактивный атлас мозга</title>
+  </head>
+  <body>
+    <div id="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">◉</span>
+          <div>
+            <strong>NEUROATLAS</strong><small>ИНТЕРАКТИВНЫЙ АТЛАС · 3.0</small>
+          </div>
+        </div>
+        <p class="section-heading">ИЗУЧЕНИЕ</p>
+        <nav aria-label="Основная навигация">
+          <button class="nav-link active" data-view="atlas">
+            ◈ <span>3D-атлас</span>
+          </button>
+          <button class="nav-link" data-view="learn">
+            ▤ <span>Уроки</span>
+          </button>
+          <button class="nav-link" data-view="quiz">
+            ◎ <span>Проверка знаний</span>
+          </button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="small-label">ВАШ ПРОГРЕСС</div>
+          <div class="progress-track"><div id="progress-bar"></div></div>
+          <p id="progress-caption">0 из 5 уроков</p>
+          <small>Сведения сохраняются в этом браузере.</small>
+        </div>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">ЦИФРОВАЯ НЕЙРОАНАТОМИЯ</span>
+            <h1>Исследуйте человеческий мозг</h1>
+            <p class="intro">
+              Вращайте модель, изучайте отделы и проверяйте знания.
+            </p>
+          </div>
+          <span class="badge">● ОБРАЗОВАТЕЛЬНЫЙ РЕЖИМ</span>
+        </header>
+        <section class="view active" id="view-atlas">
+          <div class="atlas-layout">
+            <div class="scene-card">
+              <div class="scene-top">
+                <div class="scene-title">
+                  <span class="live-dot"></span> 3D-ПРОСМОТРЩИК
+                </div>
+                <span id="model-mode" class="mode-tag">Подготовка модели</span>
+              </div>
+              <div
+                id="brain-canvas"
+                role="img"
+                aria-label="Интерактивная анатомическая модель мозга. Вращение и выбор структур."
+              ></div>
+              <div class="scene-overlay">
+                <strong id="model-status" role="status">Инициализация…</strong
+                ><span
+                  >ЛКМ — вращение · колесо — масштаб · ПКМ — перемещение</span
+                >
+              </div>
+              <div class="toolbar">
+                <button id="zoom-in" aria-label="Приблизить">＋</button
+                ><button id="zoom-out" aria-label="Отдалить">−</button
+                ><button id="focus-selection">Фокус</button
+                ><button id="isolate" aria-pressed="false">Изолировать</button
+                ><button id="retry" hidden>Повторить загрузку</button
+                ><button id="reset-camera">↺ Сброс камеры</button
+                ><button id="auto-rotate" aria-pressed="false">
+                  ⟳ Автовращение</button
+                ><button id="clear-selection">✕ Снять выделение</button>
+              </div>
+            </div>
+            <aside class="info-card">
+              <div class="eyebrow">АНАТОМИЧЕСКИЙ СПРАВОЧНИК</div>
+              <h2 id="structure-title">Выберите область</h2>
+              <p class="latin" id="structure-latin">Anatomia encephali</p>
+              <div class="info-rule"></div>
+              <p id="structure-description">
+                Выберите структуру из списка ниже или нажмите на отмеченную
+                область модели. Модель содержит отдельные именованные
+                анатомические структуры.
+              </p>
+              <p id="selection-count">Выбрано структур: 0</p>
+              <div class="detail-heading">БЫСТРЫЙ ВЫБОР ОБЛАСТИ</div>
+              <div class="regions" id="region-list"></div>
+            </aside>
+          </div>
+          <section class="atlas-tools" aria-label="Настройки атласа">
+            <div>
+              <span class="eyebrow">ПОСЛОЙНОЕ ИССЛЕДОВАНИЕ</span>
+              <h2>От поверхности к структурам</h2>
+            </div>
+            <div class="filter-row">
+              <label
+                >Раздел<select id="category">
+                  <option value="">Все разделы</option>
+                </select></label
+              ><label
+                >Полушарие<select id="hemisphere">
+                  <option value="both">Оба</option>
+                  <option value="left">Левое</option>
+                  <option value="right">Правое</option>
+                </select></label
+              ><label
+                >Непрозрачность коры <output id="opacity-value">100%</output
+                ><input
+                  id="cortex-opacity"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="100" /></label
+              ><label class="check"
+                ><input type="checkbox" id="color-mode" /> Цвета разделов</label
+              >
+            </div>
+            <label class="search-label"
+              >Найти структуру
+              <input
+                type="search"
+                id="search"
+                placeholder="Например: Hippocampus, frontal, мозжечок"
+                autocomplete="off"
+            /></label>
+            <div class="list-heading">
+              <span>СТРУКТУРЫ · английская номенклатура источника</span
+              ><span id="result-count">Загрузка…</span>
+            </div>
+            <div
+              id="structure-list"
+              class="structure-list"
+              aria-label="Список структур"
+            ></div>
+          </section>
+          <details class="notice">
+            <summary>Происхождение, лицензия и точность модели</summary>
+            <p>
+              Анатомическая геометрия: Z-Anatomy / BodyParts3D, © DBCLS и авторы
+              Z-Anatomy. Экспорт и дополнения: Itay Inbar, Brain Project. 437
+              структур, включая извилины, борозды и внутренние отделы. Без
+              фототекстур; цвета служат визуальному различению тканей и
+              разделов.
+            </p>
+            <p>
+              Часть глубинных ядер и путей приблизительно зарегистрирована из
+              других атласов. Это учебная модель, не индивидуальная
+              реконструкция и не инструмент клинических измерений. Структуры с
+              двух сторон и вложенные меши могут перекрываться; для их изучения
+              используйте изоляцию.
+            </p>
+            <p>
+              Модель и производные метаданные:
+              <a href="https://creativecommons.org/licenses/by-sa/4.0/"
+                >CC BY-SA 4.0</a
+              >. Файл модели включён в проект без изменений; материалы
+              отображения изменены.
+              <a href="models/ATTRIBUTION.md">Полные сведения и источники</a> ·
+              <a href="models/UPSTREAM-LICENSE.txt">Лицензия источника</a> ·
+              <a href="models/REGISTRATION.md">Метод совмещения</a>.
+            </p>
+            <p>
+              Учебные тексты:
+              <a
+                href="https://www.hopkinsmedicine.org/health/conditions-and-diseases/anatomy-of-the-brain"
+                >Johns Hopkins: анатомия мозга</a
+              >. Функции обеспечивают взаимодействующие сети; краткие описания
+              не означают исключительную связь одной функции с одной областью.
+            </p>
+          </details>
+        </section>
+        <section class="view" id="view-learn">
+          <div class="content-header">
+            <span class="eyebrow">ОБУЧАЮЩИЙ МАРШРУТ</span>
+            <h2>Пять коротких уроков</h2>
+            <p>От основных долей коры до глубинных структур.</p>
+          </div>
+          <div class="lesson-grid" id="lesson-list"></div>
+          <div id="lesson-detail" class="lesson-detail" hidden></div>
+        </section>
+        <section class="view" id="view-quiz">
+          <div class="content-header">
+            <span class="eyebrow">САМОПРОВЕРКА</span>
+            <h2>Проверьте знания</h2>
+            <p>Вопросы по расположению и функциям отделов мозга.</p>
+          </div>
+          <div class="quiz-card">
+            <div class="quiz-meta">
+              <span id="quiz-counter">Вопрос 1 из 8</span
+              ><span id="quiz-score">Верно: 0</span>
+            </div>
+            <div class="progress-track"><div id="quiz-bar"></div></div>
+            <h3 id="quiz-question"></h3>
+            <div class="quiz-options" id="quiz-options"></div>
+            <p id="quiz-feedback" role="status"></p>
+            <button class="primary" id="quiz-next" disabled>
+              Следующий вопрос →
+            </button>
+          </div>
+        </section>
+        <footer>
+          NEUROATLAS · Учебная демонстрация · Не предназначено для медицинской
+          диагностики.
+        </footer>
+      </main>
+    </div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

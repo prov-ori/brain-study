@@ -47,3 +47,13 @@ Brain Project (Itay Inbar), а не фотографический 3D-скан. 
 
 Краткие учебные описания сопоставлены со справочным материалом Johns Hopkins:
 https://www.hopkinsmedicine.org/health/conditions-and-diseases/anatomy-of-the-brain
+
+## Совместимость со старым режимом Pages
+Исходный HTML Vite расположен в src/index.html, JavaScript — в src/main.js.
+В корне репозитория лежит готовая статическая версия: index.html, assets/,
+models/, draco/, licenses/ и .nojekyll. Она работает и в режиме публикации ветки,
+поэтому параллельная старая сборка Pages больше не отдаёт необработанный код.
+Команда npm run build обновляет dist/ и статическую копию в корне автоматически.
+GitHub Actions продолжает тестировать и публиковать dist/. Для чистого нового
+репозитория предпочтителен источник GitHub Actions, но текущий комплект
+совместим с обоими режимами без ручной перенастройки Pages.

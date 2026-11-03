@@ -1,11 +1,35 @@
 import { test, expect } from "@playwright/test";
 import crypto from "node:crypto";
+import fs from "node:fs";
 test("published URL serves the real model and supports 3D picking", async ({
   page,
   request,
 }) => {
   test.skip(!process.env.ATLAS_URL, "Only after deployment");
-  await page.goto("./");
+  test.setTimeout(240000);
+  const expectedScript = fs
+    .readFileSync(new URL("../dist/index.html", import.meta.url), "utf8")
+    .match(/src="([^"]+\.js)"/)[1];
+  const url = "./?release=" + (process.env.GITHUB_SHA || Date.now());
+  await expect
+    .poll(
+      async () => {
+        const response = await request.get(url, {
+          headers: { "Cache-Control": "no-cache" },
+        });
+        return (
+          response.ok() && (await response.text()).includes(expectedScript)
+        );
+      },
+      {
+        timeout: 120000,
+        message: "CDN must serve this release before testing WebGL",
+      },
+    )
+    .toBe(true);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto(url);
   await expect(page.locator("body")).toHaveAttribute(
     "data-model-ready",
     "true",
@@ -28,4 +52,5 @@ test("published URL serves the real model and supports 3D picking", async ({
   await expect(page.locator("#selection-count")).not.toHaveText(
     "Выбрано структур: 0",
   );
+  expect(errors).toEqual([]);
 });
