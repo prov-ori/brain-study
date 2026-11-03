@@ -1,0 +1,19 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: #09111f; color: #edf4ff; font-family: Inter, system-ui, Arial, sans-serif; }
+#app { display: grid; grid-template-columns: minmax(0,1fr) 340px; min-height: 100vh; }
+main { min-width: 0; padding: 24px; }
+header { margin-bottom: 20px; }
+.eyebrow { color: #76c7e8; font-size: 12px; font-weight: 700; letter-spacing: .16em; }
+h1 { font-size: clamp(22px,3vw,36px); margin: 8px 0 0; }
+#brain-canvas { width:100%; height:min(75vh,850px); min-height:400px; overflow:hidden; border:1px solid #263750; border-radius:20px; background:#09111f; }
+#brain-canvas canvas { display:block; width:100%; height:100%; touch-action:none; }
+.toolbar { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+button { padding:12px 18px; border:1px solid #385473; border-radius:10px; background:#16253a; color:#fff; cursor:pointer; }
+button:hover { background:#23405e; }
+button:focus-visible { outline:3px solid #76c7e8; outline-offset:3px; }
+#model-status { color:#9fb5cf; line-height:1.5; }
+#structure-info { padding:28px; border-left:1px solid #263750; background:#101b2b; line-height:1.65; }
+#structure-info h2 { margin-top:0; }
+.latin-name { color:#76c7e8; font-style:italic; }
+.tip { font-size:14px; color:#9fb5cf; margin-top:28px; }
+@media(max-width:850px) { #app { grid-template-columns:1fr; } main { padding:16px; } #brain-canvas { height:55vh; min-height:320px; } #structure-info { border-left:0; border-top:1px solid #263750; } }
