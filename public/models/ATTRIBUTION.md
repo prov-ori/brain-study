@@ -52,3 +52,8 @@ https://github.com/data-others/atlas/releases/tag/hcp1065
 Underlying imaging: Human Connectome Project, WU-Minn Consortium (David Van Essen
 and Kamil Ugurbil), supported by NIH Blueprint grant 1U54MH091657 and the McDonnell
 Center for Systems Neuroscience at Washington University.
+
+BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International.
+Licence of the original database (checked 2026-11-03):
+https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html
+The bundled Brain Project/Z-Anatomy adaptation remains CC BY-SA 4.0.

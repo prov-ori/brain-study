@@ -17,6 +17,10 @@ test("production atlas loads local anatomy, selection, layers and learning; quiz
   );
   await expect(page.locator("#model-mode")).toContainText("437");
   await expect(page.locator("#structure-list button")).toHaveCount(437);
+  await page.locator("#brain-canvas canvas").click();
+  await expect(page.locator("#selection-count")).not.toHaveText(
+    "Выбрано структур: 0",
+  );
   await page.locator('[data-region="hippocampus"]').click();
   await expect(page.locator("#selection-count")).toHaveText(
     "Выбрано структур: 2",

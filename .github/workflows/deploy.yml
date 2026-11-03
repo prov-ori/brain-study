@@ -29,11 +29,6 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: browser-test-evidence
-          path: test-results/
       - uses: actions/configure-pages@v5
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3
@@ -44,3 +39,15 @@ jobs:
         id: deploy
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/deploy-pages@v4
+      - name: Verify published atlas
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: npm run test:e2e -- live.spec.js
+        env:
+          ATLAS_URL: https://prov-ori.github.io/brain-study/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-test-evidence
+          path: |
+            test-results/
+            live-test-results/

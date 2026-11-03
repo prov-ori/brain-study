@@ -301,7 +301,13 @@ function resetCamera() {
   camera.position.set(4, 1.6, 6);
   controls.target.set(0, 0, 0);
   controls.update();
-  if (model) frameBox(new T.Box3().setFromObject(model));
+  if (model) {
+    // Descending nerves extend far beyond the brain; frame the anatomical core.
+    const core = new T.Box3();
+    for (const mesh of meshes)
+      if (mesh.userData.node.core) core.expandByObject(mesh);
+    frameBox(core);
+  }
 }
 function reset() {
   selected.clear();
