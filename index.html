@@ -2,26 +2,42 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEUROATLAS 2.0 — интерактивный атлас мозга</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#08111d" />
+  <meta name="description" content="NEUROATLAS — интерактивный 3D-атлас строения мозга и тренажёр знаний." />
+  <title>NEUROATLAS · Интерактивный атлас мозга</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div id="app">
-    <main>
-      <header><span class="eyebrow">NEUROATLAS 2.0</span><h1>Интерактивный атлас мозга</h1></header>
-      <section id="brain-canvas" aria-label="Интерактивная 3D-модель мозга"></section>
-      <div class="toolbar">
-        <button id="reset-camera" type="button">Сбросить камеру</button>
-        <button id="clear-selection" type="button">Снять выделение</button>
-      </div>
-      <p id="model-status" role="status" aria-live="polite">Подготовка модели…</p>
-    </main>
-    <aside id="structure-info">
-      <h2>Анатомический атлас</h2>
-      <p>Нажмите на структуру непосредственно на 3D-модели, чтобы изучить её функции.</p>
-      <p class="tip">Вращение — перетаскивание мышью. Приближение — колесо мыши или жест двумя пальцами.</p>
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">◉</span><div><strong>NEUROATLAS</strong><small>ИНТЕРАКТИВНЫЙ АТЛАС · 2.1</small></div></div>
+      <p class="section-heading">ИЗУЧЕНИЕ</p>
+      <nav aria-label="Основная навигация">
+        <button class="nav-link active" data-view="atlas">◈ <span>3D-атлас</span></button>
+        <button class="nav-link" data-view="learn">▤ <span>Уроки</span></button>
+        <button class="nav-link" data-view="quiz">◎ <span>Проверка знаний</span></button>
+      </nav>
+      <div class="sidebar-bottom"><div class="small-label">ВАШ ПРОГРЕСС</div><div class="progress-track"><div id="progress-bar"></div></div><p id="progress-caption">0 из 5 уроков</p><small>Сведения сохраняются в этом браузере.</small></div>
     </aside>
+    <main class="main">
+      <header class="topbar"><div><span class="eyebrow">ЦИФРОВАЯ НЕЙРОАНАТОМИЯ</span><h1>Исследуйте человеческий мозг</h1><p class="intro">Вращайте модель, изучайте отделы и проверяйте знания.</p></div><span class="badge">● ОБРАЗОВАТЕЛЬНЫЙ РЕЖИМ</span></header>
+      <section class="view active" id="view-atlas">
+        <div class="atlas-layout">
+          <div class="scene-card">
+            <div class="scene-top"><div class="scene-title"><span class="live-dot"></span> 3D-ПРОСМОТРЩИК</div><span id="model-mode" class="mode-tag">Подготовка модели</span></div>
+            <div id="brain-canvas" role="img" aria-label="Интерактивная трёхмерная схема мозга. Можно вращать и выбирать области."></div>
+            <div class="scene-overlay"><strong id="model-status" role="status">Инициализация…</strong><span>ЛКМ — вращение · колесо — масштаб · ПКМ — перемещение</span></div>
+            <div class="toolbar"><button id="reset-camera">↺ Сброс камеры</button><button id="auto-rotate" aria-pressed="false">⟳ Автовращение</button><button id="clear-selection">✕ Снять выделение</button></div>
+          </div>
+          <aside class="info-card"><div class="eyebrow">АНАТОМИЧЕСКИЙ СПРАВОЧНИК</div><h2 id="structure-title">Выберите область</h2><p class="latin" id="structure-latin">Anatomia encephali</p><div class="info-rule"></div><p id="structure-description">Выберите структуру из списка ниже или нажмите на отмеченную область модели. Для настоящих анатомических границ загрузите размеченный GLB.</p><div class="detail-heading">ОБЛАСТИ МОЗГА</div><div class="regions" id="region-list"></div></aside>
+        </div>
+        <div class="notice"><strong>О точности модели:</strong> встроенная 3D-геометрия — наглядная схематическая визуализация, а не клинически достоверная реконструкция. Если файл <code>public/models/brain.glb</code> присутствует, приложение попытается загрузить его. Анатомическое сопоставление объектов GLB требует проверки.</div>
+      </section>
+      <section class="view" id="view-learn"><div class="content-header"><span class="eyebrow">ОБУЧАЮЩИЙ МАРШРУТ</span><h2>Пять коротких уроков</h2><p>От основных долей коры до глубинных структур.</p></div><div class="lesson-grid" id="lesson-list"></div><div id="lesson-detail" class="lesson-detail" hidden></div></section>
+      <section class="view" id="view-quiz"><div class="content-header"><span class="eyebrow">САМОПРОВЕРКА</span><h2>Проверьте знания</h2><p>Вопросы по расположению и функциям отделов мозга.</p></div><div class="quiz-card"><div class="quiz-meta"><span id="quiz-counter">Вопрос 1 из 8</span><span id="quiz-score">Верно: 0</span></div><div class="progress-track"><div id="quiz-bar"></div></div><h3 id="quiz-question"></h3><div class="quiz-options" id="quiz-options"></div><p id="quiz-feedback" role="status"></p><button class="primary" id="quiz-next" disabled>Следующий вопрос →</button></div></section>
+      <footer>NEUROATLAS · Учебная демонстрация · Не предназначено для медицинской диагностики.</footer>
+    </main>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>
